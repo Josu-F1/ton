@@ -1,0 +1,942 @@
+Crea un crud y buscador en java web en base a la siguiente descripción:
+Tengo una api de libros y autores en php y quiero consumirla desde una aplicación de java web con un crud para libros y autores con buscador (por id para autores y por nombre para libros), en el crud de libros quiero que se cargue el autor en un combobox.
+Toma en cuenta que:
+Las direcciones de mis apis son las siguientes:
+URL_AUTORES = "http://localhost/apiLibros/ApiAutores.php"
+URL_LIBROS = "http://localhost/apiLibros/ApiLibros.php"
+Los paquetes donde ubicaré los archivos son:
+ec.edu.uta.grupo4.librosjavawebver2.util y ec.edu.uta.grupo4.librosjavawebver2.servlets, para los tipos de archivos correspondientes.
+
+
+Realiza un código similar al siguiente crud de estudiantes en java web:
+SvEstudiante
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/JSP_Servlet/Servlet.java to edit this template
+ */
+package ec.edu.uta.grupo4.expo2.servlets;
+
+import ec.edu.uta.grupo4.expo2.utils.ApiCliente;
+import java.io.IOException;
+import java.io.PrintWriter;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import java.net.URLDecoder;
+import java.util.HashMap;
+import java.util.Map;
+import org.json.JSONArray;
+
+/**
+ *
+ * @author USER
+ */
+@WebServlet(name = "SvEstudiante", urlPatterns = {"/SvEstudiante"})
+public class SvEstudiante extends HttpServlet {
+
+    /**
+     * Processes requests for both HTTP <code>GET</code> and <code>POST</code>
+     * methods.
+     *
+     * @param request servlet request
+     * @param response servlet response
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException if an I/O error occurs
+     */
+    protected void processRequest(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        response.setContentType("text/html;charset=UTF-8");
+        try (PrintWriter out = response.getWriter()) {
+            /* TODO output your page here. You may use following sample code. */
+            out.println("<!DOCTYPE html>");
+            out.println("<html>");
+            out.println("<head>");
+            out.println("<title>Servlet SvEstudiante</title>");            
+            out.println("</head>");
+            out.println("<body>");
+            out.println("<h1>Servlet SvEstudiante at " + request.getContextPath() + "</h1>");
+            out.println("</body>");
+            out.println("</html>");
+        }
+    }
+
+    // <editor-fold defaultstate="collapsed" desc="HttpServlet methods. Click on the + sign on the left to edit the code.">
+    /**
+     * Handles the HTTP <code>GET</code> method.
+     *
+     * @param request servlet request
+     * @param response servlet response
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException if an I/O error occurs
+     */
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        JSONArray estudiantes = new ApiCliente().getEstudiantes();
+        //   request.getSession().setAttribute("estudiantes", estudiantes);
+        request.setAttribute("estudiantes", estudiantes);
+        //response.sendRedirect(request.getContextPath() + "/index.jsp");
+        request.getRequestDispatcher("/index.jsp").forward(request, response);
+    }
+
+    /**
+     * Handles the HTTP <code>POST</code> method.
+     *
+     * @param request servlet request
+     * @param response servlet response
+     * @throws ServletException if a servlet-specific error occurs
+     * @throws IOException if an I/O error occurs
+     */
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        boolean ok = false;
+        try {
+            ok = ApiCliente.crearEstudiante(request.getParameter("cedula"),
+                    request.getParameter("nombre"),
+                    request.getParameter("apellido"),
+                    request.getParameter("direccion"),
+                    request.getParameter("telefono"));
+            response.setStatus(ok ? (HttpServletResponse.SC_OK) : (HttpServletResponse.SC_BAD_REQUEST));
+            response.sendRedirect(request.getContextPath() + "/index.jsp");
+        } catch (Exception e) {
+            System.out.println(e.getMessage());
+        }
+
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        try {
+            boolean ok = false;
+            ok = ApiCliente.eliminarEstudiante(request.getParameter("cedula"));
+            response.setStatus(ok ? (HttpServletResponse.SC_OK) : (HttpServletResponse.SC_BAD_REQUEST));
+        } catch (Exception e) {
+            System.out.println("Error" + e.getMessage());
+        }
+    }
+
+ @Override
+    protected void doPut(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        try {
+            boolean ok = false;
+            String cedula = request.getParameter("cedula");
+            String nombre = request.getParameter("nombre");
+            String apellido = request.getParameter("apellido");
+            String direccion = request.getParameter("direccion");
+            String telefono = request.getParameter("telefono");
+
+            ok = ApiCliente.editarEstudiante(cedula, nombre, apellido, direccion, telefono);
+            response.setStatus(ok ? response.SC_OK : response.SC_BAD_REQUEST);
+
+        } catch (Exception e) {
+            System.out.println("Error" + e.getMessage());
+        }
+    }
+
+
+    /**
+     * Returns a short description of the servlet.
+     *
+     * @return a String containing servlet description
+     */
+    @Override
+    public String getServletInfo() {
+        return "Short description";
+    }// </editor-fold>
+
+}
+
+ApiCliente
+
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
+package ec.edu.uta.grupo4.expo2.utils;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URI;
+import java.net.URL;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import org.json.JSONArray;
+
+/**
+ *
+ * @author USER
+ */
+public class ApiCliente {
+
+    private static final String API_URL = "http://localhost:8080/expo/api/estudiantes";
+    private static final HttpClient HTTP = HttpClient.newHttpClient();
+
+    public static JSONArray getEstudiantes() {
+        try {
+            URL url = new URL(API_URL);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+            conn.setRequestProperty("Accept", "application/json");
+            InputStreamReader lector = new InputStreamReader(conn.getInputStream(), "UTF-8");
+            BufferedReader bf = new BufferedReader(lector);
+            StringBuilder sb = new StringBuilder();
+            String linea;
+            while ((linea = bf.readLine()) != null) {
+                sb.append(linea);
+            }
+            bf.close();
+            lector.close();
+            conn.disconnect();
+            return new JSONArray(sb.toString());
+        } catch (Exception e) {
+            System.out.println("Error" + e);
+        }
+        return null;
+    }
+
+    public static boolean crearEstudiante(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        try {
+            String jsonBody = String.format(
+                    "{\"cedula\": \"%s\", \"nombre\": \"%s\", \"apellido\": \"%s\", \"direccion\": \"%s\", \"telefono\": \"%s\"}",
+                    cedula, nombre, apellido, direccion, telefono
+            );
+
+            HttpRequest peticion = HttpRequest.newBuilder()
+                    .uri(new URI(API_URL))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            HttpResponse<String> respuesta = HTTP.send(peticion, HttpResponse.BodyHandlers.ofString());
+
+            int status = respuesta.statusCode();
+            return status == 200 || status == 201;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    public static boolean eliminarEstudiante(String cedula) {
+        String url = API_URL + "?cedula=" + cedula;
+
+        try {
+            HttpRequest req = HttpRequest.newBuilder(URI.create(url))
+                    .DELETE()
+                    .header("Accept", "application/json")
+                    .build();
+            HttpResponse<String> res = HTTP.send(req, HttpResponse.BodyHandlers.ofString());
+            return (res.statusCode()) == 200;
+        } catch (Exception ex) {
+            return false;
+
+        }
+
+    }
+
+    public static boolean editarEstudiante(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        try {
+            // Crear el cuerpo en formato JSON
+            String jsonBody = String.format(
+                    "{\"cedula\": \"%s\", \"nombre\": \"%s\", \"apellido\": \"%s\", \"direccion\": \"%s\", \"telefono\": \"%s\"}",
+                    cedula, nombre, apellido, direccion, telefono
+            );
+
+            // Construir la solicitud PUT con Content-Type application/json
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(new URI(API_URL))
+                    .header("Content-Type", "application/json")
+                    .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+                    .build();
+
+            // Enviar la solicitud
+            HttpResponse<String> response = HTTP.send(request, HttpResponse.BodyHandlers.ofString());
+
+            // Acepta 200 OK o 204 No Content como válidos
+            int status = response.statusCode();
+            return status == 200 || status == 204;
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    private static String parametrosCompletos(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        return "cedula=" + cedula
+                + "&nombre=" + nombre
+                + "&apellido=" + apellido
+                + "&direccion=" + direccion
+                + "&telefono=" + telefono;
+    }
+}
+
+Index.jsp
+<%-- 
+    Document   : index
+    Created on : 27 oct. 2025, 12:28:57
+    Author     : Alexis
+--%>
+<!-- 
+    Pagina visible solo cuando hay estudiantes en sesión
+-->
+
+<%
+/*
+if(request.getSession(false)== null || 
+    request.getSession(false).getAttribute("estudiantes")== null){
+    response.sendRedirect(request.getContextPath() + "/SvEstudiante");
+    return;
+    }
+*/
+
+    response.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+    
+    if(request.getAttribute("estudiantes") == null){
+        request.getRequestDispatcher("/SvEstudiante").forward(request, response);
+        return;
+    }
+%>
+<%@page import ="org.json.JSONArray"%>
+<%@page import ="org.json.JSONObject"%>
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+
+
+<!DOCTYPE html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>JSP Page</title>
+    <script type="text/javascript">
+        function confirmarEliminar(cedula) {
+            if (confirm("Está seguro de querer eliminar al estudiante con cédula: " + cedula + "?")) {
+                fetch("<%= request.getContextPath() %>/SvEstudiante?cedula=" + cedula,
+                        {method: "DELETE"
+                        }).then(response => {
+                    if (response.ok) {
+                        window.location.href = "<%= request.getContextPath()%>/SvEstudiante";
+                    } else {
+                        alert("Error al eliminar al estudiante.");
+                    }
+                }).catch(error => {
+                    console.log("Error en delete: ", error);
+                });
+            }
+        }
+        async function crearEstudiante(event) {
+            event.preventDefault();
+
+            const form = event.target;
+            const data = new FormData(form);
+
+            // Construir objeto JSON con los mismos nombres que usa tu API
+            const estudiante = {
+                cedula: data.get("cedula"),
+                nombre: data.get("nombre"),
+                apellido: data.get("apellido"),
+                direccion: data.get("direccion"),
+                telefono: data.get("telefono")
+            };
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json' // 👈 Igual que en Postman
+                    },
+                    body: JSON.stringify(estudiante) // 👈 Se envía como raw JSON
+                });
+
+                // Leer respuesta como texto para manejar HTML o JSON
+                const text = await response.text();
+                let result;
+                try {
+                    result = JSON.parse(text); // si viene JSON
+                } catch {
+                    result = {mensaje: text}; // si viene HTML u otro texto
+                }
+
+                if (response.ok) {
+                    alert(result.mensaje || "Estudiante agregado correctamente.");
+                    window.location.href = "<%= request.getContextPath() %>/SvEstudiante";
+                } else {
+                    alert("Error al agregar estudiante: " + (result.mensaje || "Error desconocido."));
+                }
+            } catch (error) {
+                console.error('Error en la solicitud POST:', error);
+                alert("Error de conexión o formato.");
+            }
+        }
+    </script>
+</head>
+<body>
+    <form method="GET" action="<%= request.getContextPath() %>/SvEstudiante" style="margin-bottom: 10px;">
+        <input type="text" name="cedula" placeholder="Buscar por cédula" 
+               value="<%= request.getParameter("cedula") != null ? request.getParameter("cedula") : "" %>">
+        <button type="submit">Buscar</button>
+        <% if (request.getParameter("cedula") != null && !request.getParameter("cedula").isEmpty()) { %>
+        <button type="button" onclick="window.location.href = '<%= request.getContextPath() %>/SvEstudiante'">Limpiar</button>
+        <% } %>
+
+    </form>
+
+
+    <h2>Lista de Estudiantes</h2>
+    <table border ="1">
+        <tr>
+            <th>N# Est.</th>
+            <th>Cedula</th>
+            <th>Nombre</th>
+            <th>Apellido</th>
+            <th>Direccion</th>
+            <th>Telefono</th>
+            <th>Editar</th>
+            <th>Eliminar</th>
+
+
+        </tr>
+
+        <% 
+        JSONArray estudiantes = (JSONArray) request.getAttribute("estudiantes");
+         
+        if (estudiantes != null){
+            for (int i=0; i<estudiantes.length();i++){
+             JSONObject e= estudiantes.getJSONObject(i);
+        %>
+        <tr>
+            <td><%= i+1%></td>
+            <td><%= e.optString("cedula")%></td>
+            <td><%= e.optString("nombre")%></td>
+            <td><%= e.optString("apellido")%></td>
+            <td><%=e.optString("direccion")%></td>
+            <td><%= e.optString("telefono")%></td>
+            <td>
+                <form method="GET" action="<%= request.getContextPath() %>/editar.jsp">
+                    <input type="hidden" name="cedula" value="<%= e.optString("cedula") %>">
+                    <input type="hidden" name="nombre" value="<%= e.optString("nombre") %>">
+                    <input type="hidden" name="apellido" value="<%= e.optString("apellido") %>">
+                    <input type="hidden" name="direccion" value="<%= e.optString("direccion") %>">
+                    <input type="hidden" name="telefono" value="<%= e.optString("telefono") %>">
+                    <button type="submit">Editar</button>
+
+                </form>
+
+
+            <td>
+                <button type="button" onclick="confirmarEliminar('<%= e.optString("cedula")%>')">Eliminar</button></td>
+        </tr>
+        <%
+            }
+        }else{
+            System.out.println("No se encontarron datos");
+        %>
+        <tr>
+            <td colapsan="6"></td>
+        </tr>
+        <%
+            }
+        %>
+
+    </table>
+    <h2>Crear Estudiante</h2>
+    <form method="post" action="${pageContext.request.contextPath}/SvEstudiante">
+        <p><label>Cédula: <input name="cedula" required></label></p>
+        <p><label>Nombre: <input name="nombre" required></label></p>
+        <p><label>Apellido: <input name="apellido" required></label></p>
+        <p><label>Dirección: <input name="direccion" required></label></p>
+        <p><label>Teléfono: <input name="telefono" required></label></p>
+        <button type="submit">Guardar</button>
+    </form>
+
+
+</body>
+
+editar.jsp
+<%-- 
+    Document   : editar
+    Created on : 10 nov. 2025, 11:31:36
+    Author     : USER
+--%>
+
+<%@page contentType="text/html" pageEncoding="UTF-8"%>
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <title>JSP Page</title>
+        <script type="text/javascript">
+            function actualizarEstudiante(event) {
+                event.preventDefault();
+                const form = event.target;
+                const data = new URLSearchParams(new FormData(form));
+                fetch("<%= request.getContextPath() %>/SvEstudiante?" + data.toString(),
+                        {
+                            method: "PUT",
+                           // headers: {"Content-Type", "application/x-www-form-urlencoded"}
+                            // body: data.toString()
+                        }).then(response => {
+                    if (response.ok) {
+                        window.location.href = "<%= request.getContextPath()%>/SvEstudiante";
+                    } else {
+                        alert("Error al editar al estudiante.");
+                    }
+                }).catch(error => {
+                    console.log("Error en delete: ", error);
+                });
+            }
+
+        </script>
+    </head>
+    <body>
+        <h1>Editar</h1>
+        <form onsubmit="actualizarEstudiante(event)">
+            <p><label>Cedula: <input name="cedula" value="<%= request.getParameter("cedula")%>" readonly="true"></label></p>
+            <p><label>Nombre: <input name="nombre" value="<%= request.getParameter("nombre")%>" required></label></p>
+            <p><label>Apellido: <input name="apellido" value="<%= request.getParameter("apellido")%>" required></label></p>
+            <p><label>Direccion: <input name="direccion" value="<%= request.getParameter("direccion")%>" required></label></p>
+            <p><label>Telefono: <input name="telefono" value="<%= request.getParameter("telefono") %>" required></label></p>
+            <button type="submit">Guardar</button>
+        </form>
+    </body>
+</html>
+
+
+Este es el código de mis apis
+ApiAutores.php
+<?php
+include_once "CrudAutores.php";
+$opc = $_SERVER['REQUEST_METHOD'];
+
+switch ($opc) {
+  case 'GET':
+    if (isset($_GET['ID_AUTOR'])) {
+      CrudClientes::buscar();
+    } else {
+      CrudClientes::get();
+    }
+    break;
+  case 'POST':
+    CrudClientes::insert();
+    break;
+  case 'PUT':
+    CrudClientes::update();
+    break;
+  case 'DELETE':
+    CrudClientes::delete();
+    break;
+  default:
+    echo json_encode(["error" => "Método no soportado"]);
+}
+
+CrudAutores.php
+<?php
+include_once "Conexion.php";
+
+class CrudClientes
+{
+    public static function get()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $sqlSelect = "SELECT * FROM AUTORES";
+        $resultado = $conectar->prepare($sqlSelect);
+        $resultado->execute();
+        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($data);
+    }
+
+    public static function insert()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $nombre = $_POST['NOMBRE_AUTOR'];
+        $correo = $_POST['CORREO_AUTOR'];
+        $sqlInsert = "INSERT INTO AUTORES (NOMBRE_AUTOR, CORREO_AUTOR) VALUES ('$nombre','$correo')";
+        $resultado = $conectar->prepare($sqlInsert);
+        $resultado->execute();
+        $data = "Se insertó correctamente";
+        echo json_encode($data);
+    }
+
+    public static function update()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $id = $_GET['ID_AUTOR'];
+        $nombre = $_GET['NOMBRE_AUTOR'];
+        $correo = $_GET['CORREO_AUTOR'];
+        $sqlUpdate = "UPDATE AUTORES SET NOMBRE_AUTOR='$nombre', CORREO_AUTOR='$correo' WHERE ID_AUTOR='$id'";
+        $resultado = $conectar->prepare($sqlUpdate);
+        $resultado->execute();
+        $data = "Actualizado";
+        echo json_encode($data);
+    }
+
+    public static function delete()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        if (isset($_GET['ID_AUTOR'])) {
+            $id = $_GET['ID_AUTOR'];
+        } else {
+            http_response_code(400);
+            echo json_encode(["error" => "Falta el parámetro 'ID_AUTOR'"]);
+            return;
+        }
+        $sqlDelete = "DELETE FROM AUTORES WHERE ID_AUTOR='$id'";
+        $resultado = $conectar->prepare($sqlDelete);
+        $resultado->execute();
+        $data = "Eliminado";
+        echo json_encode($data);
+    }
+
+    public static function buscar()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $id = $_GET['ID_AUTOR'];
+        $sqlConsulta = "SELECT * FROM AUTORES WHERE ID_AUTOR='$id'";
+        $resultado = $conectar->prepare($sqlConsulta);
+        $resultado->execute();
+        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($data);
+    }
+}
+
+ApiLibros.php
+  <?php
+  include_once "CrudLibros.php";
+  $opc = $_SERVER['REQUEST_METHOD'];
+
+  switch ($opc) {
+    case 'GET':
+      if (isset($_GET['TITULO_LIBRO'])) {
+        CrudLibros::buscar();
+      } else {
+        CrudLibros::get();
+      }
+      break;
+    case 'POST':
+      CrudLibros::insert();
+      break;
+    case 'PUT':
+      CrudLibros::update();
+      break;
+    case 'DELETE':
+      CrudLibros::delete();
+      break;
+    default:
+      echo json_encode(["error" => "Método no soportado"]);
+  }
+
+CrudLibros.php
+<?php
+include_once "Conexion.php";
+
+class CrudLibros
+{
+
+    public static function get()
+    {
+        $sql = "SELECT l.ID_LIBRO, l.TITULO_LIBRO, a.NOMBRE_AUTOR AS AUTOR, l.ANIO_LIBRO
+                FROM LIBROS l
+                JOIN AUTORES a ON l.AUTOR_ID_PER = a.ID_AUTOR";
+        try {
+            $conexion = new Conexion();
+            $conectar = $conexion->conectar();
+            $resultado = $conectar->prepare($sql);
+            $resultado->execute();
+            $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+            echo json_encode($data);
+        } catch (PDOException $e) {
+            echo json_encode(["error" => "Error al obtener libro: " . $e->getMessage()]);
+        }
+    }
+
+        public static function buscar()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $libro = $_GET['TITULO_LIBRO'];
+        $sqlConsulta = "SELECT * FROM LIBROS WHERE TITULO_LIBRO='$libro'";
+        $resultado = $conectar->prepare($sqlConsulta);
+        $resultado->execute();
+        $data = $resultado->fetchAll(PDO::FETCH_ASSOC);
+        echo json_encode($data);
+    }
+
+    public static function insert()
+    {
+        $titulo = $_POST['TITULO_LIBRO'];
+        $id_autor = $_POST['AUTOR_ID_PER'];
+        $anio = $_POST['ANIO_LIBRO'];
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $sqlInsert = "INSERT INTO LIBROS (TITULO_LIBRO, AUTOR_ID_PER, ANIO_LIBRO ) VALUES ('$titulo','$id_autor', '$anio')";
+        $resultado = $conectar->prepare($sqlInsert);
+        $resultado->execute();
+        $data = "Se insertó correctamente";
+        echo json_encode($data);
+    }
+
+    public static function update()
+    {
+
+        $id_libro = $_GET['ID_LIBRO'];
+        $titulo = $_GET['TITULO_LIBRO'];
+        $id_autor = $_GET['AUTOR_ID_PER'];
+        $anio = $_GET['ANIO_LIBRO'];
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        $sqlUpdate = "UPDATE LIBROS SET TITULO_LIBRO='$titulo', AUTOR_ID_PER='$id_autor', ANIO_LIBRO='$anio' WHERE ID_LIBRO='$id_libro'";
+        $resultado = $conectar->prepare($sqlUpdate);
+        $resultado->execute();
+        $data = "Actualizado";
+        echo json_encode($data);
+    }
+
+    public static function delete()
+    {
+        $conexion = new Conexion();
+        $conectar = $conexion->conectar();
+        if (isset($_GET['ID_LIBRO'])) {
+            $id = $_GET['ID_LIBRO'];
+        } else {
+            http_response_code(400);
+            echo json_encode(["error" => "Falta el parámetro 'ID_LIBRO'"]);
+            return;
+        }
+        $sqlDelete = "DELETE FROM LIBROS WHERE ID_LIBRO='$id'";
+        $resultado = $conectar->prepare($sqlDelete);
+        $resultado->execute();
+        $data = "Eliminado";
+        echo json_encode($data);
+    }
+}
+
+Conexion.php
+<?php
+  class Conexion {
+    public function conectar() {
+      $servername = "localhost:3307";
+      $dsn = "mysql:host=$servername;dbname=libros";
+      $username = "root";
+      $password = "";
+
+      try {
+        $conn = new PDO($dsn, $username, $password);
+      } catch(Exception $e) {
+        die("Fallo: " . $e->getMessage());
+      }
+      return $conn;
+    }
+  }
+?>
+
+crea el servet utilizando HttpClient, similar al crear, borrar y actualizar del siguiente servlet de estudiantes que hicimos en clases:
+
+package ec.edu.uta.grupo4.librosjavaweb.util;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.net.http.*;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.net.http.HttpResponse.BodyHandlers;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import org.json.JSONArray;
+import org.json.JSONException; // Importante añadir esta
+
+/**
+ *
+ * @author ramir
+ */
+public class ApiCliente {
+
+    private static final String API_URL = "http://localhost/SOAEjemploGrupo2/src/main/java/api/api.php";
+    private static final HttpClient cliente = HttpClient.newHttpClient();
+
+    /**
+     * Obtiene la lista de estudiantes desde la API externa
+     *
+     * @return JSONArray con los datos de estudiantes o null si hay error
+     */
+    public static JSONArray getEstudiantes() {
+
+        HttpURLConnection conn = null; // Definir fuera del try para cerrarlo en finally
+        StringBuilder sb = new StringBuilder();
+
+        try {
+            // 1. Crea la URL y abre conexión
+            URL url = new URL(API_URL);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET"); // Método GET para obtener datos
+            conn.setRequestProperty("Accept", "application/json");
+
+            // Opcional
+            //conn.setConnectTimeout(5000);
+            //conn.setReadTimeout(5000);
+            // 2. Verificar el código de respuesta
+            int responseCode = conn.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) { // HTTP_OK es 200
+                Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE,
+                        "Error en API. Código de respuesta: {0}", responseCode);
+                return null;
+            }
+
+            // 3. Lee la respuesta de la API (si el código fue 200)
+            try (InputStreamReader lector = new InputStreamReader(conn.getInputStream(), "UTF-8"); BufferedReader br = new BufferedReader(lector)) {
+
+                String linea;
+                // Construye la respuesta completa juntando todas las líneas
+                while ((linea = br.readLine()) != null) {
+                    sb.append(linea.trim());
+                }
+            }
+
+            // 4. Convierte la respuesta String a JSONArray y lo retorna
+            return new JSONArray(sb.toString());
+
+        } catch (MalformedURLException ex) {
+            Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE, "URL mal formada: " + API_URL, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE, "Error de IO al conectar con API. ¿Está el servidor PHP (XAMPP) encendido?", ex);
+        } finally {
+            // 5. Cierra la conexión pase lo que pase
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        // Retorna null si ocurrió alguna excepción
+        return null;
+    }
+
+    public static JSONArray buscarEstudiante(String cedula) {
+
+        HttpURLConnection conn = null; // Definir fuera del try para cerrarlo en finally
+        StringBuilder sb = new StringBuilder();
+
+        try {
+            // 1. Crea la URL y abre conexión
+            String urlCompleta = API_URL + "?CEDULA=" + cedula;
+            URL url = new URL(urlCompleta);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET"); // Método GET para obtener datos
+            conn.setRequestProperty("Accept", "application/json");
+
+            int responseCode = conn.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) { // HTTP_OK es 200
+                Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE,
+                        "Error en API. Código de respuesta: {0}", responseCode);
+                return null;
+            }
+
+            // 3. Lee la respuesta de la API (si el código fue 200)
+            try (InputStreamReader lector = new InputStreamReader(conn.getInputStream(), "UTF-8"); BufferedReader br = new BufferedReader(lector)) {
+
+                String linea;
+                // Construye la respuesta completa juntando todas las líneas
+                while ((linea = br.readLine()) != null) {
+                    sb.append(linea.trim());
+                }
+            }
+
+            // 4. Convierte la respuesta String a JSONArray y lo retorna
+            return new JSONArray(sb.toString());
+
+        } catch (MalformedURLException ex) {
+            Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE, "URL mal formada: " + API_URL, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE, "Error de IO al conectar con API. ¿Está el servidor PHP (XAMPP) encendido?", ex);
+        } finally {
+            // 5. Cierra la conexión pase lo que pase
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+
+        // Retorna null si ocurrió alguna excepción
+        return null;
+    }
+
+    public static boolean crearEstudiante(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        try {
+            String parametros = parametrosCompletos(cedula, nombre, apellido, direccion, telefono);
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(new URI(API_URL))
+                    .header("Content-Type", "application/x-www-form-urlencoded")
+                    .POST(HttpRequest.BodyPublishers.ofString(parametros))
+                    .build();
+            HttpResponse<String> respuesta = cliente.send(req, BodyHandlers.ofString());
+            return (respuesta.statusCode()) == 200;
+        } catch (Exception e) {
+
+        }
+        return false;
+    }
+
+    public static boolean eliminarEstudiante(String cedula) {
+        String urlParaEliminar = API_URL + "?CEDULA=" + cedula;
+        try {
+            HttpRequest req = HttpRequest.newBuilder()
+                    .uri(new URI(urlParaEliminar))
+                    .DELETE()
+                    .build();
+
+            HttpResponse<String> respuesta = cliente.send(req, BodyHandlers.ofString());
+
+            return respuesta.statusCode() == HttpURLConnection.HTTP_OK;
+
+        } catch (Exception e) {
+            Logger.getLogger(ApiCliente.class.getName()).log(Level.SEVERE, "Error al eliminar estudiante", e);
+            return false;
+        }
+    }
+
+    public static boolean actualizarEstudiante(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        String urlEditar = API_URL + "?" + parametrosCompletos(cedula, nombre, apellido, direccion, telefono);
+        try {
+            HttpRequest peticionPut = HttpRequest.newBuilder()
+                    .uri(new URI(urlEditar))
+                    .PUT(HttpRequest.BodyPublishers.noBody())
+                    .build();
+            HttpResponse<String> respuesta = cliente.send(peticionPut,
+                    BodyHandlers.ofString());
+            if (respuesta.statusCode() == 200) {
+                return true;
+            }
+        } catch (Exception e) {
+            System.out.println(e);
+        }
+        return false;
+    }
+
+    private static String parametrosCompletos(String cedula, String nombre, String apellido, String direccion, String telefono) {
+        return "CEDULA=" + cedula
+                + "&NOMBRE=" + nombre
+                + "&APELLIDO=" + apellido
+                + "&DIRECCION=" + direccion
+                + "&TELEFONO=" + telefono;
+    }
+}
+
+
+las direcciones de mis apis son las siguientes:
+URL_AUTORES = "http://localhost/apiLibros/ApiAutores.php"
+URL_LIBROS = "http://localhost/apiLibros/ApiLibros.php", los paquetes donde ubicaré los archivos son:
+ec.edu.uta.grupo4.librosjavawebver2.util y ec.edu.uta.grupo4.librosjavawebver2.servlets, para los tipos de archivos correspondientes
